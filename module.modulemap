@@ -1,0 +1,4 @@
+module ESP_SNTP [system] {
+    umbrella header "src/sntp.h"
+    export *
+}

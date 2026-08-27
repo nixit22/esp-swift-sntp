@@ -1,0 +1,10 @@
+name: esp-swift-sntp
+version: "0.1.0"
+description: "ESP-IDF SNTP (time sync) for Swift"
+url: "https://github.com/nixit22/esp-swift-sntp"
+dependencies:
+  idf: ">=5.5"
+  esp-swift-platform:
+    git: "https://github.com/nixit22/esp-swift-platform.git"
+  esp-swift-support:
+    git: "https://github.com/nixit22/esp-swift-support.git"
