@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-#include "sntp.h"
+#include "ESP_SNTP/ESP_SNTP.h"
 
 esp_sntp_config_t esp_sntp_config_create(const char *server) {
     esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(server);

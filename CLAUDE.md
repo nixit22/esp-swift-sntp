@@ -8,9 +8,9 @@ Depends on: `SwiftPlatform`, `SwiftSupport`, `esp_netif`, `esp_event`, `lwip`
 
 | File | Role |
 |---|---|
-| `src/SNTP.swift` | `@_exported import ESP_SNTP` re-exports the raw C API; also defines `SNTP`, a typed-throws wrapper over one `esp_netif_sntp` session |
-| `src/sntp.c` / `src/sntp.h` | C wrapper — `esp_sntp_config_create` (exposed to Swift as `esp_sntp_config_t(server:)`) builds a single-server config via the `ESP_NETIF_SNTP_DEFAULT_CONFIG` macro |
-| `module.modulemap` | Clang module `ESP_SNTP` — umbrella over `src/sntp.h`, which pulls in `esp_netif_sntp.h` (init/start/wait), `esp_sntp.h` (status/mode queries, aliased `esp_sntp_*` names), and `esp_netif.h`/`esp_event.h` (for the one-time `esp_netif_init()`/`esp_event_loop_create_default()` bring-up every caller needs first) |
+| `Sources/SNTP/SNTP.swift` | `@_exported import ESP_SNTP` re-exports the raw C API; also defines `SNTP`, a typed-throws wrapper over one `esp_netif_sntp` session |
+| `Sources/ESP_SNTP/sntp.c` / `Sources/ESP_SNTP/include/ESP_SNTP/ESP_SNTP.h` | C wrapper — `esp_sntp_config_create` (exposed to Swift as `esp_sntp_config_t(server:)`) builds a single-server config via the `ESP_NETIF_SNTP_DEFAULT_CONFIG` macro |
+| `Package.swift` | SwiftPM package: C target `ESP_SNTP` (module map generated from `include/ESP_SNTP/ESP_SNTP.h`, the former `ESP_SNTP/ESP_SNTP.h`) and Swift target `SNTP` |
 
 ## Public API
 
@@ -42,7 +42,7 @@ Requires `esp_netif_init()` and `esp_event_loop_create_default()` to have been c
 
 ## Non-obvious patterns
 
-**`esp_sntp_config_t(server:)`** — `ESP_NETIF_SNTP_DEFAULT_CONFIG(server)` is a function-like C macro; the Clang importer doesn't expose macros like this to Swift at all. Its expansion also assigns into a fixed-size `servers[CONFIG_LWIP_SNTP_MAX_SERVERS]` C array — imported into Swift as a same-size tuple, which has no ergonomic construction syntax for an arbitrary element count. `sntp.c`'s `esp_sntp_config_create` builds this struct in C and returns it by value; `sntp.h` gives it a constructor-shaped Swift name via `SWIFT_NAME("esp_sntp_config_t(server:)")` — same pattern as `esp-swift-gpio`'s `gpio_config_t(pin_bit_mask:...)`. Only single-server configs are wrapped; multi-server / DHCP-provided-server / server-renewal-on-new-IP support was dropped rather than kept as unused, untested plumbing (same reasoning as NVS's "default partition only").
+**`esp_sntp_config_t(server:)`** — `ESP_NETIF_SNTP_DEFAULT_CONFIG(server)` is a function-like C macro; the Clang importer doesn't expose macros like this to Swift at all. Its expansion also assigns into a fixed-size `servers[CONFIG_LWIP_SNTP_MAX_SERVERS]` C array — imported into Swift as a same-size tuple, which has no ergonomic construction syntax for an arbitrary element count. `sntp.c`'s `esp_sntp_config_create` builds this struct in C and returns it by value; `ESP_SNTP/ESP_SNTP.h` gives it a constructor-shaped Swift name via `SWIFT_NAME("esp_sntp_config_t(server:)")` — same pattern as `esp-swift-gpio`'s `gpio_config_t(pin_bit_mask:...)`. Only single-server configs are wrapped; multi-server / DHCP-provided-server / server-renewal-on-new-IP support was dropped rather than kept as unused, untested plumbing (same reasoning as NVS's "default partition only").
 
 **The `server` pointer must outlive the session — lwIP stores it, not a copy.** Confirmed by reading `lwip/src/apps/sntp/sntp.c`'s `sntp_setservername`: `sntp_servers[idx].name = server;` — a raw pointer assignment. `SNTP.init` copies the Swift `String` into a `strdup`'d C string held in `self.server` for exactly this reason (a `withCString`-scoped buffer would go out of scope before the pointer's last use); `deinit` frees it *after* `esp_netif_sntp_deinit()` runs (which calls `sntp_stop()`, ending lwIP's use of the pointer).
 
